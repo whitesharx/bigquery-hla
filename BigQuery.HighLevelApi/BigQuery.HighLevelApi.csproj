@@ -3,6 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>WhiteSharx.BigQuery.HighLevelApi</RootNamespace>
+    <PackageId>WhiteSharx.BigQuery.HighLevelApi</PackageId>
+    <Authors>Alex Zaitsev</Authors>
+    <Company>WhiteSharx</Company>
+    <Product />
   </PropertyGroup>
 
   <ItemGroup>
