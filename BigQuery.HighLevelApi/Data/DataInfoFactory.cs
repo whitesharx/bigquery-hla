@@ -4,6 +4,7 @@
 
 using System;
 using System.Reflection;
+using Google.Cloud.BigQuery.V2;
 using WhiteSharx.BigQuery.HighLevelApi.Attributes;
 
 namespace WhiteSharx.BigQuery.HighLevelApi.Data {
@@ -12,7 +13,15 @@ namespace WhiteSharx.BigQuery.HighLevelApi.Data {
       if (property.PropertyType == typeof(DateTime)) {
 
         if (property.GetCustomAttribute<BigQueryPartitionAttribute>() != null) {
-          return new DateDataInfo();
+          var attribute = property.GetCustomAttribute<BigQueryPartitionAttribute>();
+
+          if (attribute.Type == BigQueryDbType.Timestamp) {
+            return new TimestampDataInfo();
+          }
+
+          if (attribute.Type == BigQueryDbType.Date) {
+            return new DateDataInfo();
+          }
         }
 
         return new DateTimeDataInfo();
