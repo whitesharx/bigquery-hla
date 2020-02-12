@@ -7,6 +7,7 @@
     <Authors>Alex Zaitsev</Authors>
     <Company>WhiteSharx</Company>
     <Product />
+    <Version>0.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
