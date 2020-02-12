@@ -36,9 +36,6 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Suppose that all dates are equal
-    /// </summary>
     public async Task InsertMany(IReadOnlyCollection<T> dataModels) {
 
       var table = await GetTable();

@@ -7,12 +7,22 @@
     <Authors>Alex Zaitsev</Authors>
     <Company>WhiteSharx</Company>
     <Product />
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
+    <PackageIcon>photo_2020-02-12_14-32-25.jpg</PackageIcon>
+    <PackageIconUrl />
+    <Description>Easy to use BigQuery connector</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Cloud.BigQuery.V2" Version="1.4.0" />
     <PackageReference Include="Humanizer" Version="2.7.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\Users\alexander\Desktop\photo_2020-02-12_14-32-25.jpg">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
