@@ -7,6 +7,6 @@ using Google.Cloud.BigQuery.V2;
 namespace WhiteSharx.BigQuery.HighLevelApi.Data {
   public class StringDataInfo : IDataInfo {
     public BigQueryDbType DbType => BigQueryDbType.String;
-    public object MapToRowValue(object source) => source.ToString();
+    public object MapToRowValue(object source) => source?.ToString();
   }
 }

@@ -45,8 +45,8 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
     public async Task Upsert(
       IReadOnlyCollection<T> dataModels,
-      Expression<Func<T, object>>[] mergeFields,
-      Expression<Func<T, object>>[] updateFields) {
+      Expression<Func<T, object>>[] compareFields,
+      Expression<Func<T, object>>[] updateFields = null) {
 
       string tempTableName = $"{tableName}_merge_{Guid.NewGuid().ToString().Replace("-", string.Empty)}";
       var tempTable = new BigQueryContextTable<T>(projectId, datasetId, tempTableName, credsPath);
@@ -54,7 +54,7 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       await tempTable.InsertMany(dataModels);
 
       try {
-        await Merge(tempTableName, mergeFields, updateFields);
+        await Merge(tempTableName, compareFields, updateFields);
       } finally {
         await tempTable.DeleteTable();
       }
@@ -62,8 +62,8 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
     private async Task Merge(
       string tempTableName,
-      Expression<Func<T, object>>[] mergeFields,
-      Expression<Func<T, object>>[] updateFields) {
+      Expression<Func<T, object>>[] compareFields,
+      Expression<Func<T, object>>[] updateFields = null) {
 
       var client = await bigQueryContextClientResolver.GetClient(projectId, credsPath);
       await GetTable();
@@ -74,19 +74,22 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
       sb.Append("ON ");
 
-      var mergeMembers = GetFieldNames(mergeFields);
-      var merges = mergeMembers.Select(x => $"t.{x} = s.{x}");
+      var compareMembers = GetFieldNames(compareFields);
+      var merges = compareMembers.Select(x => $"t.{x} = s.{x}");
       var mergesStr = string.Join(" AND ", merges);
       sb.Append(mergesStr);
       sb.Append(Environment.NewLine);
 
-      sb.Append($"WHEN MATCHED THEN {Environment.NewLine}");
-      sb.Append($"UPDATE SET {Environment.NewLine}");
+      var updateMembers = updateFields != null ? GetFieldNames(updateFields) : GetFieldsNamesThatExcludesCompareMembers(compareMembers);
 
-      var updateMembers = GetFieldNames(updateFields);
-      var updates = updateMembers.Select(x => $"{x} = s.{x}").ToArray();
-      var updatesStr = string.Join(", ", updates);
-      sb.Append($"{updatesStr}{Environment.NewLine}");
+      if (updateMembers.Any()) {
+        sb.Append($"WHEN MATCHED THEN {Environment.NewLine}");
+        sb.Append($"UPDATE SET {Environment.NewLine}");
+
+        var updates = updateMembers.Select(x => $"{x} = s.{x}").ToArray();
+        var updatesStr = string.Join(", ", updates);
+        sb.Append($"{updatesStr}{Environment.NewLine}");
+      }
 
       sb.Append($"WHEN NOT MATCHED THEN {Environment.NewLine}");
 
@@ -97,6 +100,15 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
       string sql = sb.ToString();
       await client.ExecuteQueryAsync(sql, null);
+    }
+
+    private string[] GetFieldsNamesThatExcludesCompareMembers(string[] compareMembers) {
+      var validFields = typeof(T).GetProperties().Where(x => x.GetCustomAttribute<BigQueryIgnoreAttribute>() == null)
+        .Select(x => SnakeCaseConverter.ConvertToSnakeCase(x.Name));
+
+      var updateFields = validFields.Except(compareMembers).ToArray();
+
+      return updateFields;
     }
 
     public async Task DeleteTable() {
