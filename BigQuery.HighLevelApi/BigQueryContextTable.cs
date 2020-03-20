@@ -8,6 +8,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
@@ -15,6 +16,8 @@ using WhiteSharx.BigQuery.HighLevelApi.Attributes;
 
 namespace WhiteSharx.BigQuery.HighLevelApi {
   public class BigQueryContextTable<T> where T:class {
+
+    private readonly SemaphoreSlim tableAccessLocker = new SemaphoreSlim(1, 1);
 
     private const int InsertBatchSize = 5000;
     private readonly string tableName;
@@ -123,11 +126,22 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
       var schema = BigQueryContextTableSchemaBuilder.BuildSchema<T>();
 
-      var table = await dataset.GetOrCreateTableAsync(tableName, schema, null, new CreateTableOptions {
-        TimePartitioning = new TimePartitioning {
-          Field = SnakeCaseConverter.ConvertToSnakeCase(typeof(T).GetProperties().Single(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null).Name)
-        }
-      });
+      BigQueryTable table;
+
+
+      await tableAccessLocker.WaitAsync();
+
+      try {
+        table = await dataset.GetOrCreateTableAsync(tableName, schema, null,
+          new CreateTableOptions {
+            TimePartitioning = new TimePartitioning {
+              Field = SnakeCaseConverter.ConvertToSnakeCase(typeof(T).GetProperties()
+                .Single(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null).Name)
+            }
+          });
+      } finally {
+        tableAccessLocker.Release();
+      }
 
       return table;
     }
