@@ -10,7 +10,7 @@ using WhiteSharx.BigQuery.HighLevelApi.Attributes;
 namespace WhiteSharx.BigQuery.HighLevelApi.Data {
   public class DataInfoFactory {
     public IDataInfo Get(PropertyInfo property) {
-      if (property.PropertyType == typeof(DateTime)) {
+      if (property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?)) {
 
         if (property.GetCustomAttribute<BigQueryPartitionAttribute>() != null) {
           var attribute = property.GetCustomAttribute<BigQueryPartitionAttribute>();

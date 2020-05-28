@@ -4,7 +4,9 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Google.Cloud.BigQuery.V2;
 
 namespace WhiteSharx.BigQuery.HighLevelApi {
   public class BigQueryContext{
@@ -12,10 +14,22 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
     private readonly string datasetName;
     private readonly string credsPath;
 
+    private readonly BigQueryContextMapper mapper = new BigQueryContextMapper();
+
     public BigQueryContext(string projectId, string datasetName, string credsPath) {
       this.projectId = projectId;
       this.datasetName = datasetName;
       this.credsPath = credsPath;
+    }
+
+    public async Task<IReadOnlyCollection<T>> Query<T>(string sql, object parameters = null) {
+      var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
+
+      var nativeParameters = mapper.MapToNativeParameters(parameters);
+      var results = await client.ExecuteQueryAsync(sql, nativeParameters);
+      var models = mapper.MapFromResults<T>(results);
+
+      return models;
     }
 
     public BigQueryContextTable<T> GetTable<T>(string name) where T: class{

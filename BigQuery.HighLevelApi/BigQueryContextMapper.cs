@@ -2,7 +2,9 @@
 // Unauthorized copying of this file, via any medium is strictly prohibited.
 // Proprietary and confidential.
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Google.Cloud.BigQuery.V2;
 using WhiteSharx.BigQuery.HighLevelApi.Attributes;
@@ -34,6 +36,47 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       }
 
       return rows;
+    }
+
+    public IReadOnlyCollection<BigQueryParameter> MapToNativeParameters(object parameters) {
+      var nativeParameters = new List<BigQueryParameter>();
+
+      if (parameters == null) {
+        return nativeParameters;
+      }
+
+      var props = parameters.GetType().GetProperties();
+
+      foreach (var prop in props) {
+        var dataInfo = dataInfoFactory.Get(prop);
+        var nativeParameter = new BigQueryParameter {
+          Name = prop.Name,
+          Type = dataInfo.DbType,
+          Value = dataInfo.MapToRowValue(prop.GetValue(parameters))
+        };
+        nativeParameters.Add(nativeParameter);
+      }
+
+      return nativeParameters;
+    }
+
+    public IReadOnlyCollection<T> MapFromResults<T>(BigQueryResults results) {
+
+      var models = new List<T>();
+
+      foreach (var row in results) {
+
+        var instance = Activator.CreateInstance<T>();
+
+        foreach (var field in results.Schema.Fields) {
+          var property = typeof(T).GetProperties().Single(x => x.Name == field.Name);
+          property.SetValue(instance, row[field.Name]);
+        }
+
+        models.Add(instance);
+      }
+
+      return models;
     }
   }
 }

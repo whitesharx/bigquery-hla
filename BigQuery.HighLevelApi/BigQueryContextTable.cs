@@ -35,8 +35,8 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       this.credsPath = credsPath;
     }
 
-    public Task<IReadOnlyCollection<T>> Query() {
-      throw new NotImplementedException();
+    public async Task EnsureExists() {
+      await GetTable();
     }
 
     public async Task InsertMany(IReadOnlyCollection<T> dataModels) {
