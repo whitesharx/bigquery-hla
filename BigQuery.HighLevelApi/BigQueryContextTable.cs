@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
+using Humanizer;
 using WhiteSharx.BigQuery.HighLevelApi.Attributes;
 
 namespace WhiteSharx.BigQuery.HighLevelApi {
@@ -132,13 +133,19 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       await tableAccessLocker.WaitAsync();
 
       try {
-        table = await dataset.GetOrCreateTableAsync(tableName, schema, null,
-          new CreateTableOptions {
-            TimePartitioning = new TimePartitioning {
-              Field = SnakeCaseConverter.ConvertToSnakeCase(typeof(T).GetProperties()
-                .Single(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null).Name)
-            }
-          });
+
+        var partitionProperty = typeof(T).GetProperties()
+          .SingleOrDefault(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null);
+        var options = new CreateTableOptions();
+
+        if (partitionProperty != null) {
+          options.TimePartitioning = new TimePartitioning {
+            Field = SnakeCaseConverter.ConvertToSnakeCase(typeof(T).GetProperties()
+              .Single(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null).Name)
+          };
+        }
+
+        table = await dataset.GetOrCreateTableAsync(tableName, schema, null, options);
       } finally {
         tableAccessLocker.Release();
       }
