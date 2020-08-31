@@ -20,7 +20,7 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
     private readonly SemaphoreSlim tableAccessLocker = new SemaphoreSlim(1, 1);
 
-    private const int InsertBatchSize = 4000;
+    private const int InsertBatchSize = 3000;
     private readonly string tableName;
     private readonly string projectId;
     private readonly string datasetId;
