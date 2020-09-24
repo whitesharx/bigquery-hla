@@ -15,10 +15,8 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
     private readonly DataInfoFactory dataInfoFactory = new DataInfoFactory();
 
-    public IReadOnlyCollection<BigQueryInsertRow> MapToInsertRows<T>(IReadOnlyCollection<T> dataModels) {
+    public IEnumerable<BigQueryInsertRow> MapToInsertRows<T>(IReadOnlyCollection<T> dataModels) {
       var publicProps = typeof(T).GetProperties();
-
-      var rows = new List<BigQueryInsertRow>();
 
       foreach (var dataModel in dataModels) {
 
@@ -29,13 +27,14 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
             continue;
           }
 
-          row.Add(SnakeCaseConverter.ConvertToSnakeCase(property.Name), dataInfoFactory.Get(property).MapToRowValue(property.GetValue(dataModel)));
+          string fieldName = SnakeCaseConverter.ConvertToSnakeCase(property.Name);
+          var fieldValue = dataInfoFactory.Get(property).MapToRowValue(property.GetValue(dataModel));
+
+          row.Add(fieldName, fieldValue);
         }
 
-        rows.Add(row);
+        yield return row;
       }
-
-      return rows;
     }
 
     public IReadOnlyCollection<BigQueryParameter> MapToNativeParameters(object parameters) {

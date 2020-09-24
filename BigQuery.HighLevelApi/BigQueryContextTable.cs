@@ -20,14 +20,15 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
     private readonly SemaphoreSlim tableAccessLocker = new SemaphoreSlim(1, 1);
 
-    private const int InsertBatchSize = 3000;
+    private const int InsertBatchSize = 25000;
     private readonly string tableName;
     private readonly string projectId;
     private readonly string datasetId;
     private readonly string credsPath;
     private readonly BigQueryContextMapper mapper = new BigQueryContextMapper();
     private readonly BigQueryContextClientResolver bigQueryContextClientResolver = new BigQueryContextClientResolver();
-    private readonly Batcher batcher = new Batcher();
+    private readonly BatchExecutor batchExecutor = new BatchExecutor();
+    private readonly BatchDivider batchDivider = new BatchDivider();
 
     public BigQueryContextTable(string projectId, string datasetId, string tableName, string credsPath) {
       this.tableName = tableName;
@@ -44,7 +45,18 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
       var table = await GetTable();
       var rows = mapper.MapToInsertRows(dataModels);
-      await batcher.Do(rows, async x => await table.InsertRowsAsync(x), InsertBatchSize);
+      var batches = batchDivider.GetBatches(rows);
+
+      var tasks = new List<Task>();
+
+      foreach (var batch in batches) {
+        var task = Task.Run(async () => {
+          await table.InsertRowsAsync(batch);
+        });
+        tasks.Add(task);
+      }
+
+      await Task.WhenAll(tasks);
     }
 
     public async Task Upsert(
