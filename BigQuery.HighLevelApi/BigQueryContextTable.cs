@@ -139,8 +139,7 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
       var schema = BigQueryContextTableSchemaBuilder.BuildSchema<T>();
 
-      BigQueryTable table;
-
+      BigQueryTable table = null;
 
       await tableAccessLocker.WaitAsync();
 
@@ -148,16 +147,17 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
 
         var partitionProperty = typeof(T).GetProperties()
           .SingleOrDefault(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null);
-        var options = new CreateTableOptions();
+
+        var tableDeclaration = new Table { Schema = schema };
 
         if (partitionProperty != null) {
-          options.TimePartitioning = new TimePartitioning {
+          tableDeclaration.TimePartitioning = new TimePartitioning {
             Field = SnakeCaseConverter.ConvertToSnakeCase(typeof(T).GetProperties()
               .Single(x => x.GetCustomAttribute<BigQueryPartitionAttribute>() != null).Name)
           };
         }
 
-        table = await dataset.GetOrCreateTableAsync(tableName, schema, null, options);
+        table = await dataset.GetOrCreateTableAsync(tableName, tableDeclaration);
       } finally {
         tableAccessLocker.Release();
       }
