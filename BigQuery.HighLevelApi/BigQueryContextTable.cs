@@ -157,7 +157,14 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
           };
         }
 
-        table = await dataset.GetOrCreateTableAsync(tableName, tableDeclaration);
+        var tables = await  dataset.ListTablesAsync().ReadPageAsync(10000);
+
+        if (tables.Any(x => x.Reference.TableId == tableName)) {
+          table = await dataset.GetOrCreateTableAsync(tableName, tableDeclaration);
+        } else {
+          table = await dataset.CreateTableAsync(tableName, tableDeclaration);
+        }
+
       } finally {
         tableAccessLocker.Release();
       }
