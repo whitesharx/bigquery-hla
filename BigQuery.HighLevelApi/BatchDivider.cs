@@ -11,7 +11,7 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
     /// <summary>
     /// Original size limit is 10485760, this value was achieved for this object size calculation way
     /// </summary>
-    private const long PayloadSizeLimit = 11468482767;
+    private const long PayloadSizeLimit = 7000000;
     private const int RowsCountLimit = 10000;
 
     private readonly ObjectSizeCalculator objectSizeCalculator = new ObjectSizeCalculator();

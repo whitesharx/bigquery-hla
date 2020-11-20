@@ -1,27 +1,25 @@
-using System;
-using System.Collections.Generic;
+using System.Text;
 using Google.Cloud.BigQuery.V2;
 
 namespace WhiteSharx.BigQuery.HighLevelApi {
   public class ObjectSizeCalculator {
     public long GetObjectSize(BigQueryInsertRow row) {
-      long rowSize = InternalGetObjectSize(row);
+
+      long rowSize = 0;
 
       foreach (var field in row) {
-        long fieldSize = InternalGetObjectSize(field);
+        string str = field?.ToString();
+
+        if (str == null) {
+          str = string.Empty;
+        }
+
+        var fieldSize = Encoding.UTF8.GetByteCount(str);
+
         rowSize += fieldSize;
       }
 
       return rowSize;
-    }
-
-    private int InternalGetObjectSize(object o) {
-      unsafe {
-        RuntimeTypeHandle th = o.GetType().TypeHandle;
-        int size = *(*(int**) &th + 1);
-
-        return size;
-      }
     }
   }
 }
