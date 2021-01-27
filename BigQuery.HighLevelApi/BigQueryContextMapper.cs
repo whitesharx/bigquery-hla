@@ -68,7 +68,12 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
         var instance = Activator.CreateInstance<T>();
 
         foreach (var field in results.Schema.Fields) {
-          var property = typeof(T).GetProperties().Single(x => x.Name == field.Name);
+          var property = typeof(T).GetProperties().SingleOrDefault(x => x.Name == field.Name);
+
+          if (property == null) {
+            throw new InvalidOperationException($"Unable to find a model property for the response field '{field.Name}'");
+          }
+
           property.SetValue(instance, row[field.Name]);
         }
 
