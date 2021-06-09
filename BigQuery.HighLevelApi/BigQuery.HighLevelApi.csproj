@@ -7,7 +7,7 @@
     <Authors>Alex Zaitsev</Authors>
     <Company>WhiteSharx</Company>
     <Product />
-    <Version>0.0.19</Version>
+    <Version>0.0.23</Version>
     <PackageIcon>icon.png</PackageIcon>
     <PackageIconUrl />
     <Description>Easy to use BigQuery connector</Description>
@@ -30,6 +30,7 @@
     <PackageReference Include="Google.Cloud.BigQuery.V2" Version="2.1.0" />
     <PackageReference Include="Humanizer" Version="2.8.26" />
     <PackageReference Include="NuGet.Build" Version="2.12.1" />
+    <PackageReference Include="System.Linq.Async" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Google.Apis.Bigquery.v2.Data;
 using Google.Cloud.BigQuery.V2;
 using WhiteSharx.BigQuery.HighLevelApi.Attributes;
 using WhiteSharx.BigQuery.HighLevelApi.Data;
@@ -59,15 +60,20 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
       return nativeParameters;
     }
 
-    public IReadOnlyCollection<T> MapFromResults<T>(BigQueryResults results) {
+    public IReadOnlyCollection<T> MapFromResults<T>(IReadOnlyCollection<BigQueryRow> rows, TableSchema schema) {
+      var models = MapRows<T>(rows, schema);
+      return models;
+    }
+
+    private IReadOnlyCollection<T> MapRows<T>(IReadOnlyCollection<BigQueryRow> rows, TableSchema schema) {
 
       var models = new List<T>();
 
-      foreach (var row in results) {
+      foreach (var row in rows) {
 
         var instance = Activator.CreateInstance<T>();
 
-        foreach (var field in results.Schema.Fields) {
+        foreach (var field in schema.Fields) {
           var property = typeof(T).GetProperties().SingleOrDefault(x => x.Name == field.Name);
 
           if (property == null) {
