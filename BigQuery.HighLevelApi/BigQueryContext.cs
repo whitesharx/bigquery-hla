@@ -6,7 +6,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Cloud.BigQuery.V2;
@@ -17,32 +16,52 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
     private readonly string projectId;
     private readonly string datasetName;
     private readonly string credsPath;
+    private readonly int? maxParallelism;
     private readonly Func<AuditLogConfig> auditLogConfig;
 
     private readonly BigQueryContextMapper mapper = new BigQueryContextMapper();
 
-    public BigQueryContext(string projectId, string datasetName, string credsPath, Func<AuditLogConfig> auditLogConfig = null) {
+    private static SemaphoreSlim semaphore = null;
+    private static object semaphoreCreationLocker = new object();
+
+    public BigQueryContext(string projectId, string datasetName, string credsPath, int? maxParallelism = null, Func<AuditLogConfig> auditLogConfig = null) {
       this.projectId = projectId;
       this.datasetName = datasetName;
       this.credsPath = credsPath;
+      this.maxParallelism = maxParallelism;
       this.auditLogConfig = auditLogConfig;
+
+      if (maxParallelism.HasValue) {
+        lock (semaphoreCreationLocker) {
+          if (semaphore == null) {
+            semaphore = new SemaphoreSlim(maxParallelism.Value, maxParallelism.Value);
+          }
+        }
+      }
     }
 
     public async Task<IReadOnlyCollection<T>> Query<T>(string sql, object parameters = null, int? parallelPageSize = null) {
       var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
 
       var nativeParameters = mapper.MapToNativeParameters(parameters);
-      var job = await client.CreateQueryJobAsync(sql, nativeParameters);
-      await job.PollUntilCompletedAsync();
-      var results = await job.GetQueryResultsAsync();
 
-      IReadOnlyCollection<BigQueryRow> rows;
+      BigQueryJob job = null;
+      BigQueryResults results = null;
+      IReadOnlyCollection<BigQueryRow> rows = null;
 
-      if (parallelPageSize == null) {
-        rows = results.ToList();
-      } else {
-        rows = await GetRowsInParallel(client, results, parallelPageSize.Value);
-      }
+      await BigQueryParallelRestrictor.RestrictParallelInvocation(
+        semaphore,
+        async () => {
+          job = await client.CreateQueryJobAsync(sql, nativeParameters);
+          await job.PollUntilCompletedAsync();
+          results = await job.GetQueryResultsAsync();
+
+          if (parallelPageSize == null) {
+            rows = results.ToList();
+          } else {
+            rows = await GetRowsInParallel(client, results, parallelPageSize.Value);
+          }
+        });
 
       long? bytesBilled = job.Statistics.Query.TotalBytesBilled;
 
@@ -85,20 +104,38 @@ namespace WhiteSharx.BigQuery.HighLevelApi {
     }
 
     public BigQueryContextTable<T> GetTable<T>(string name) where T: class{
-      return new BigQueryContextTable<T>(projectId, datasetName, name, credsPath);
+      return new BigQueryContextTable<T>(projectId, datasetName, name, credsPath, semaphore);
     }
 
     public async Task<bool> TableExists(string tableName) {
-      var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
-      var tables = client.ListTables(this.datasetName);
 
-      return tables.Any(x => x.Reference.TableId.ToLower() == tableName.ToLower());
+      bool exists = false;
+
+      await BigQueryParallelRestrictor.RestrictParallelInvocation(
+        semaphore,
+        async () => {
+          var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
+          var tables = client.ListTables(this.datasetName);
+          exists = tables.Any(x => x.Reference.TableId.ToLower() == tableName.ToLower());
+        });
+
+
+      return exists;
     }
 
     public static async Task<IReadOnlyCollection<string>> GetDatasetNames(string projectId, string credsPath) {
-      var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
-      var datasets = await client.ListDatasetsAsync(projectId).ReadPageAsync(100);
-      var names = datasets.Select(x => x.Reference.DatasetId).ToArray();
+
+      IReadOnlyCollection<string> names = null;
+
+      await BigQueryParallelRestrictor.RestrictParallelInvocation(
+        semaphore,
+        async () => {
+          var client = await new BigQueryContextClientResolver().GetClient(projectId, credsPath);
+          var datasets = await client.ListDatasetsAsync(projectId).ReadPageAsync(100);
+          names = datasets.Select(x => x.Reference.DatasetId).ToArray();
+        });
+
+      
 
       return names;
     }

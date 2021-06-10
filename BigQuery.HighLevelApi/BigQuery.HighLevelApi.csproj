@@ -7,7 +7,7 @@
     <Authors>Alex Zaitsev</Authors>
     <Company>WhiteSharx</Company>
     <Product />
-    <Version>0.0.23</Version>
+    <Version>0.0.25</Version>
     <PackageIcon>icon.png</PackageIcon>
     <PackageIconUrl />
     <Description>Easy to use BigQuery connector</Description>
